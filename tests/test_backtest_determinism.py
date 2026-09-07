@@ -76,3 +76,8 @@ def test_no_fill_path_emits_no_fill_events():
 def test_execution_config_validates_fill_ratio():
     with pytest.raises(ValueError, match="fill_ratio"):
         ExecutionConfig(fill_ratio=1.2)
+
+
+def test_execution_config_validates_min_fill_quantity():
+    with pytest.raises(ValueError, match="min_fill_quantity"):
+        ExecutionConfig(min_fill_quantity=0)

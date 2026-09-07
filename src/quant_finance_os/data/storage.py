@@ -24,6 +24,25 @@ class LocalParquetStore:
         statements = duckdb.extract_statements(sql)
         if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
             raise ValueError("Only read-only SELECT queries are allowed")
+        forbidden_tokens = (
+            "read_csv",
+            "read_json",
+            "read_parquet(",
+            "read_text",
+            "httpfs",
+            "postgres_scan",
+            "mysql_scan",
+            "sqlite_scan",
+            "attach",
+            "pragma",
+            "copy ",
+            "call ",
+            "install ",
+            "load ",
+        )
+        lowered_query = statements[0].query.lower()
+        if any(token in lowered_query for token in forbidden_tokens):
+            raise ValueError("Query source must be registered local tables only")
 
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)

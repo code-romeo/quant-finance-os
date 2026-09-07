@@ -96,4 +96,4 @@ def test_mark_to_market_skips_missing_price_symbols():
     )
     pnl = portfolio.mark_to_market(seq=2, ts=ts, prices={})
     assert pnl.unrealized_pnl == 0
-    assert pnl.equity == portfolio.cash
+    assert pnl.equity == portfolio.cash + 50

@@ -38,3 +38,13 @@ def test_local_parquet_store_refreshes_existing_table_view(tmp_path):
 
     store.write_table("bars", pl.DataFrame({"price": [2.0]}))
     assert store.query("SELECT price FROM bars").to_dict(as_series=False) == {"price": [2.0]}
+
+
+def test_local_parquet_store_blocks_external_read_functions(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    try:
+        store.query("SELECT * FROM read_parquet('/tmp/any.parquet')")
+    except ValueError as exc:
+        assert "registered local tables" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for external table functions")

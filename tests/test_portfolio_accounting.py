@@ -35,3 +35,20 @@ def test_portfolio_accounting_realized_and_unrealized_pnl():
     assert round(state.unrealized_pnl, 6) == 60.0
     assert round(state.cash, 6) == 9440.0
     assert round(state.equity, 6) == 10100.0
+
+
+def test_fee_is_deducted_from_cash():
+    ledger = PortfolioLedger(initial_cash=1_000)
+    fill = FillEvent(
+        timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc),
+        order_id="o1",
+        symbol="AAPL",
+        side=Side.BUY,
+        quantity=1,
+        fill_price=100,
+        fee=1.25,
+    )
+    ledger.apply_fill(fill)
+    state = ledger.mark_to_market({"AAPL": 100})
+    assert round(state.cash, 6) == 898.75
+    assert round(state.equity, 6) == 998.75

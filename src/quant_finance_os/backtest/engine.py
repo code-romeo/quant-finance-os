@@ -86,6 +86,7 @@ class BacktestEngine:
         run_id: str = "backtest",
     ) -> None:
         self._strategy = strategy
+        self._initial_cash = initial_cash
         self._ledger = PortfolioLedger(initial_cash=initial_cash)
         self._slippage_model = slippage_model or ConstantBpsSlippage()
         self._fill_model = fill_model or ImmediateFillModel()
@@ -105,6 +106,8 @@ class BacktestEngine:
         return with_metadata(event, self._next_metadata(parent_event_id))
 
     def run(self, market_events: Iterable[MarketEvent]) -> BacktestResult:
+        self._ledger = PortfolioLedger(initial_cash=self._initial_cash)
+        self._seq = 0
         output_events: list = []
         latest_timestamp: datetime | None = None
         prices: dict[str, float] = {}
@@ -120,7 +123,7 @@ class BacktestEngine:
 
             self._ledger.mark_to_market(prices)
 
-            signals = tuple(self._strategy.on_market_event(raw_market_event, self._ledger))
+            signals = tuple(self._strategy.on_market_event(market_event, self._ledger))
             for signal in signals:
                 normalized_signal = self._normalize(signal, parent_event_id=market_event.metadata.event_id)
                 output_events.append(normalized_signal)
@@ -143,8 +146,10 @@ class BacktestEngine:
                 normalized_fill = self._normalize(fill, parent_event_id=normalized_order.metadata.event_id)
                 output_events.append(normalized_fill)
 
+                unrealized_before_fill = self._ledger.state.unrealized_pnl
                 position, realized_delta = self._ledger.apply_fill(normalized_fill)
                 marked_state = self._ledger.mark_to_market(prices)
+                unrealized_delta = marked_state.unrealized_pnl - unrealized_before_fill
 
                 position_event = self._normalize(
                     PositionUpdateEvent(
@@ -162,7 +167,7 @@ class BacktestEngine:
                         timestamp=market_event.timestamp,
                         symbol=position.symbol,
                         realized_delta=realized_delta,
-                        unrealized_delta=marked_state.unrealized_pnl,
+                        unrealized_delta=unrealized_delta,
                         total_realized=marked_state.realized_pnl,
                         total_unrealized=marked_state.unrealized_pnl,
                         cash=marked_state.cash,

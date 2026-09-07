@@ -36,8 +36,10 @@ class PortfolioLedger:
         if position.quantity == 0 or (position.quantity > 0 and signed_qty > 0) or (position.quantity < 0 and signed_qty < 0):
             new_qty = position.quantity + signed_qty
             if new_qty != 0:
-                total_cost = (position.average_price * abs(position.quantity)) + (fill.fill_price * abs(signed_qty))
-                position.average_price = total_cost / abs(new_qty)
+                existing_abs_qty = abs(position.quantity)
+                added_abs_qty = abs(signed_qty)
+                combined_notional = (position.average_price * existing_abs_qty) + (fill.fill_price * added_abs_qty)
+                position.average_price = combined_notional / abs(new_qty)
             else:
                 position.average_price = 0.0
             position.quantity = new_qty

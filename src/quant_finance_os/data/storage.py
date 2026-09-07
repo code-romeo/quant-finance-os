@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import duckdb
@@ -14,8 +15,8 @@ class LocalParquetStore:
         self._tables: dict[str, Path] = {}
 
     def write_table(self, name: str, rows: list[dict]) -> Path:
-        if not name or not name.replace("_", "").isalnum():
-            raise ValueError("table name must be alphanumeric/underscore")
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise ValueError("table name must start with letter/underscore and contain only alphanumerics/underscore")
         if not rows:
             raise ValueError("rows must be non-empty")
 
@@ -32,6 +33,8 @@ class LocalParquetStore:
 
     def query(self, sql: str) -> list[dict]:
         statement = sql.strip()
+        if statement.endswith(";"):
+            statement = statement[:-1].strip()
         lowered = statement.lower()
 
         if lowered.startswith("with "):
@@ -48,7 +51,8 @@ class LocalParquetStore:
         try:
             for table_name, table_path in self._tables.items():
                 safe_path = str(table_path).replace("'", "''")
-                con.execute(f"CREATE VIEW {table_name} AS SELECT * FROM read_parquet('{safe_path}')")
+                safe_identifier = table_name.replace('"', '""')
+                con.execute(f'CREATE VIEW "{safe_identifier}" AS SELECT * FROM read_parquet(\'{safe_path}\')')
 
             try:
                 result = con.execute(statement)

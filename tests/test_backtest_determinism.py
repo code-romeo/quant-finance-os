@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from quant_finance_os.backtest import BacktestEngine, ExecutionConfig, ExecutionSimulator
 from quant_finance_os.core import MarketDataEvent, OrderEvent, Side
 
@@ -69,3 +71,8 @@ def test_no_fill_path_emits_no_fill_events():
     event_types = [event.event_type.value for event in result.events]
     assert "order" in event_types
     assert "fill" not in event_types
+
+
+def test_execution_config_validates_fill_ratio():
+    with pytest.raises(ValueError, match="fill_ratio"):
+        ExecutionConfig(fill_ratio=1.2)

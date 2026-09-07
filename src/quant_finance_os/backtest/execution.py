@@ -11,6 +11,10 @@ class ExecutionConfig:
     fill_ratio: float = 1.0
     fee_per_share: float = 0.0
 
+    def __post_init__(self) -> None:
+        if not 0 <= self.fill_ratio <= 1:
+            raise ValueError("fill_ratio must be between 0 and 1")
+
 
 class ExecutionSimulator:
     def __init__(self, config: ExecutionConfig | None = None) -> None:

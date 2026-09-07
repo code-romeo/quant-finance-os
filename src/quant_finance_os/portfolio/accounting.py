@@ -63,6 +63,7 @@ class PortfolioLedger:
             else:
                 position.quantity = remaining
 
+        realized_delta -= fill.fee
         trade_cash = fill.fill_price * fill.quantity
         self.state.cash += -trade_cash if fill.side == Side.BUY else trade_cash
         self.state.cash -= fill.fee

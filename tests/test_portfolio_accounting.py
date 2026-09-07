@@ -52,6 +52,7 @@ def test_fee_is_deducted_from_cash():
     state = ledger.mark_to_market({"AAPL": 100})
     assert round(state.cash, 6) == 898.75
     assert round(state.equity, 6) == 998.75
+    assert round(state.realized_pnl, 6) == -1.25
 
 
 def test_short_add_updates_weighted_average_price():

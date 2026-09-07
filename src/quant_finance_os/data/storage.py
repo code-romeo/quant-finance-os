@@ -50,11 +50,14 @@ class LocalParquetStore:
         if re.search(r"\bread_(?:parquet|csv|json|json_auto|ndjson|text)\s*\(", lowered):
             raise ValueError("Direct file-reading functions are not allowed; query registered local tables only")
 
+        table_refs = re.findall(r'\bfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', statement, flags=re.IGNORECASE)
+        if len(table_refs) != 1:
+            raise ValueError("Query must reference exactly one registered local table")
         match = re.match(r'^\s*select[\s\S]+?\sfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?(\s|$)', statement, flags=re.IGNORECASE)
         if not match:
             raise ValueError("Query must select from a registered local table")
         table_name = match.group(1)
-        if table_name not in self._tables:
+        if table_name not in self._tables or any(ref not in self._tables for ref in table_refs):
             raise ValueError("Query references unknown table(s); only registered local tables are allowed")
 
         con = duckdb.connect(database=":memory:")

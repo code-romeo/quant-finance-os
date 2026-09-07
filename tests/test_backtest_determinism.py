@@ -52,6 +52,11 @@ def test_backtest_replay_is_deterministic():
     assert [e.metadata.seq for e in left.events] == list(range(1, len(left.events) + 1))
 
 
+def test_backtest_metadata_contains_run_id():
+    result = BacktestEngine(strategy=BuyOnceStrategy(), initial_cash=10_000, run_id="run-abc").run(_events())
+    assert all(event.metadata.run_id == "run-abc" for event in result.events)
+
+
 def test_same_engine_run_restarts_sequence_and_portfolio():
     class BuyEveryTickStrategy:
         def on_market_event(self, event: MarketEvent, ledger):

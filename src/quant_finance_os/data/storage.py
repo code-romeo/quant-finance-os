@@ -16,16 +16,19 @@ class LocalParquetStore:
     def write_table(self, name: str, frame: pl.DataFrame) -> Path:
         path = self.root / f"{name}.parquet"
         frame.write_parquet(path)
+        self._registered_tables.discard(name)
         self._register_table(path)
         return path
 
     def query(self, sql: str) -> pl.DataFrame:
-        if not sql.lstrip().lower().startswith("select"):
+        normalized = sql.strip()
+        statements = [part.strip() for part in normalized.split(";") if part.strip()]
+        if len(statements) != 1 or not statements[0].lower().startswith("select"):
             raise ValueError("Only read-only SELECT queries are allowed")
 
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)
-        return self._conn.execute(sql).pl()
+        return self._conn.execute(statements[0]).pl()
 
     def _register_table(self, parquet_file: Path) -> None:
         table_name = parquet_file.stem
@@ -38,8 +41,11 @@ class LocalParquetStore:
         )
         self._registered_tables.add(table_name)
 
-    def __del__(self) -> None:
-        try:
-            self._conn.close()
-        except Exception:
-            pass
+    def close(self) -> None:
+        self._conn.close()
+
+    def __enter__(self) -> "LocalParquetStore":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()

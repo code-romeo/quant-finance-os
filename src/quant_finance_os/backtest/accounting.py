@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from quant_finance_os.core.events import FillEvent, PnLEvent, PositionEvent, Side
 
@@ -60,7 +61,7 @@ class Portfolio:
             unrealized_pnl=state.quantity * (fill.fill_price - state.avg_price),
         )
 
-    def mark_to_market(self, seq: int, ts, prices: dict[str, float]) -> PnLEvent:
+    def mark_to_market(self, seq: int, ts: datetime, prices: dict[str, float]) -> PnLEvent:
         market_value = 0.0
         unrealized = 0.0
         for symbol, state in self.positions.items():

@@ -21,9 +21,12 @@ class ExecutionSimulator:
         self.config = config or ExecutionConfig()
 
     def simulate_fill(self, order: OrderEvent, market: MarketDataEvent, seq: int) -> FillEvent | None:
-        fill_qty = round(order.quantity * self.config.fill_ratio, 8)
-        if fill_qty <= 0:
+        raw_fill_qty = order.quantity * self.config.fill_ratio
+        if raw_fill_qty <= 0:
             return None
+        fill_qty = round(raw_fill_qty, 8)
+        if fill_qty == 0:
+            fill_qty = raw_fill_qty
 
         slip = self.config.slippage_bps / 10_000
         price = market.price * (1 + slip if order.side == Side.BUY else 1 - slip)

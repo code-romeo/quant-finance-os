@@ -29,28 +29,16 @@ class LocalParquetStore:
             self._register_table(parquet_file)
         query = statements[0].query
 
-        if re.search(r"\b(?:from|join)\s+[A-Za-z_][A-Za-z0-9_]*\s*\(", query, flags=re.IGNORECASE):
-            raise ValueError("Query source must be registered local tables only")
+        try:
+            table_refs = {name.split(".")[-1].strip('"').lower() for name in duckdb.get_table_names(query)}
+        except duckdb.Error as exc:
+            raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
 
-        table_refs = re.findall(
-            r"\b(?:from|join)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))",
-            query,
-            flags=re.IGNORECASE,
-        )
-        cte_refs = {
-            ref.strip('"').lower()
-            for ref in re.findall(
-                r"\b(?:with|,)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))\s+as\s*\(",
-                query,
-                flags=re.IGNORECASE,
-            )
-        }
-        for ref in table_refs:
-            table_name = ref.strip('"').lower()
-            if table_name in cte_refs:
-                continue
-            if table_name not in self._registered_tables:
-                raise ValueError("Query source must be registered local tables only")
+        has_from_or_join = re.search(r"\b(from|join)\b", query, flags=re.IGNORECASE) is not None
+        if has_from_or_join and not table_refs:
+            raise ValueError("Query source must be registered local tables only")
+        if any(table_name not in self._registered_tables for table_name in table_refs):
+            raise ValueError("Query source must be registered local tables only")
 
         return self._conn.execute(query).pl()
 

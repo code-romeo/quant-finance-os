@@ -26,6 +26,17 @@ class MetadataAwareStrategy:
         return []
 
 
+class SellOnceStrategy:
+    def __init__(self) -> None:
+        self._has_sold = False
+
+    def on_market_event(self, event: MarketEvent, ledger):
+        if self._has_sold:
+            return []
+        self._has_sold = True
+        return [SignalEvent(timestamp=event.timestamp, symbol=event.symbol, side=Side.SELL, quantity=1.0, reason="entry")]
+
+
 def _events():
     return [
         MarketEvent(timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc), symbol="AAPL", price=100.0, volume=10.0),
@@ -76,6 +87,21 @@ def test_backtest_applies_slippage_and_fees():
     first_pnl = pnl_events[0]
     assert round(first_pnl.cash, 6) == 9899.84995
     assert round(first_pnl.equity, 6) == 9999.84995
+
+
+def test_backtest_applies_sell_side_slippage_direction():
+    engine = BacktestEngine(
+        strategy=SellOnceStrategy(),
+        initial_cash=10_000,
+        slippage_model=ConstantBpsSlippage(bps=10),
+        fill_model=ImmediateFillModel(fee_bps=0),
+        run_id="r1",
+    )
+    result = engine.run(_events())
+    pnl_events = [event for event in result.events if isinstance(event, PnLEvent)]
+    assert pnl_events
+    first_pnl = pnl_events[0]
+    assert round(first_pnl.cash, 6) == 10099.9
 
 
 def test_backtest_rejects_out_of_order_market_events():

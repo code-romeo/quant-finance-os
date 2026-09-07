@@ -43,6 +43,8 @@ class LocalParquetStore:
             raise ValueError("Only SELECT queries are allowed")
         if ";" in statement:
             raise ValueError("Only a single SQL statement is allowed")
+        if re.search(r"\bread_(?:parquet|csv|json|json_auto|ndjson|text)\s*\(", lowered):
+            raise ValueError("Direct file-reading functions are not allowed; query registered local tables only")
 
         table_refs = re.findall(r'\b(?:from|join)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', lowered)
         if not table_refs:

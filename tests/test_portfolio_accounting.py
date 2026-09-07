@@ -52,3 +52,28 @@ def test_fee_is_deducted_from_cash():
     state = ledger.mark_to_market({"AAPL": 100})
     assert round(state.cash, 6) == 898.75
     assert round(state.equity, 6) == 998.75
+
+
+def test_short_add_updates_weighted_average_price():
+    ledger = PortfolioLedger(initial_cash=10_000)
+    first = FillEvent(
+        timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc),
+        order_id="o1",
+        symbol="AAPL",
+        side=Side.SELL,
+        quantity=10,
+        fill_price=100,
+        fee=0,
+    )
+    second = FillEvent(
+        timestamp=datetime(2024, 1, 1, 9, 31, tzinfo=timezone.utc),
+        order_id="o2",
+        symbol="AAPL",
+        side=Side.SELL,
+        quantity=5,
+        fill_price=110,
+        fee=0,
+    )
+    ledger.apply_fill(first)
+    position, _ = ledger.apply_fill(second)
+    assert round(position.average_price, 6) == 103.333333

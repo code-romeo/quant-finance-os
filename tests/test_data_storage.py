@@ -27,6 +27,9 @@ def test_local_parquet_store_query_guardrails(tmp_path: Path):
     with pytest.raises(ValueError, match="single SQL statement"):
         store.query("SELECT * FROM bars; SELECT * FROM bars")
 
+    with pytest.raises(ValueError, match="Direct file-reading functions"):
+        store.query("SELECT * FROM read_parquet('other.parquet')")
+
     with pytest.raises(ValueError, match="CTE"):
         store.query("WITH cte AS (SELECT * FROM bars) SELECT * FROM cte")
 

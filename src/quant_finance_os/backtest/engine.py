@@ -43,10 +43,11 @@ class BacktestEngine:
                 )
                 events.append(placed)
 
-                fill = self.execution.simulate_fill(placed, normalized_market, seq=seq + 1)
+                next_fill_seq = seq + 1
+                fill = self.execution.simulate_fill(placed, normalized_market, seq=next_fill_seq)
                 if fill is None:
                     continue
-                seq += 1
+                seq = next_fill_seq
                 events.append(fill)
                 seq += 1
                 events.append(self.portfolio.apply_fill(fill, seq=seq))

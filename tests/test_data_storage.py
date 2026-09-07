@@ -1,6 +1,7 @@
 import polars as pl
 
 from quant_finance_os.data import LocalParquetStore
+from quant_finance_os.data.storage import _extract_leading_cte_names
 
 
 def test_local_parquet_store_registers_written_tables(tmp_path):
@@ -77,3 +78,8 @@ def test_local_parquet_store_allows_subquery_on_registered_table(tmp_path):
     store.write_table("bars", pl.DataFrame({"price": [100.0, 101.0]}))
     out = store.query("SELECT avg(price) AS p FROM (SELECT price FROM bars) s")
     assert out["p"][0] == 100.5
+
+
+def test_extract_leading_cte_names_ignores_select_aliases():
+    query = "WITH base AS (SELECT 1 AS read_parquet), other AS (SELECT * FROM base) SELECT 1, read_parquet AS alias FROM other"
+    assert _extract_leading_cte_names(query) == {"base", "other"}

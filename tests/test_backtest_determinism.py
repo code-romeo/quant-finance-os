@@ -27,6 +27,21 @@ class OneShotLongStrategy:
         ]
 
 
+class StaleTimestampOrderStrategy:
+    def on_market_data(self, event, portfolio):
+        return [
+            OrderEvent(
+                event_id="stale-order",
+                seq=0,
+                ts=datetime(2000, 1, 1, tzinfo=timezone.utc),
+                order_id="ord-stale",
+                symbol=event.symbol,
+                side=Side.BUY,
+                quantity=1,
+            )
+        ]
+
+
 def build_market_events():
     prices = [100.0, 101.0, 102.0]
     return [
@@ -81,3 +96,16 @@ def test_execution_config_validates_fill_ratio():
 def test_execution_config_validates_min_fill_quantity():
     with pytest.raises(ValueError, match="min_fill_quantity"):
         ExecutionConfig(min_fill_quantity=0)
+
+
+def test_execution_config_validates_slippage_bps():
+    with pytest.raises(ValueError, match="slippage_bps"):
+        ExecutionConfig(slippage_bps=-1)
+
+
+def test_engine_normalizes_order_timestamp_to_market_event():
+    market_event = build_market_events()[0]
+    result = BacktestEngine(strategy=StaleTimestampOrderStrategy(), initial_cash=1_000).run([market_event])
+    order_events = [event for event in result.events if event.event_type.value == "order"]
+    assert len(order_events) == 1
+    assert order_events[0].ts == market_event.ts

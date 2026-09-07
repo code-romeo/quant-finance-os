@@ -38,7 +38,9 @@ class BacktestEngine:
             orders = self.strategy.on_market_data(normalized_market, self.portfolio)
             for idx, order in enumerate(orders, start=1):
                 seq += 1
-                placed = order.model_copy(update={"seq": seq, "event_id": f"ord:{seq}:{idx}"})
+                placed = order.model_copy(
+                    update={"seq": seq, "event_id": f"ord:{seq}:{idx}", "ts": normalized_market.ts}
+                )
                 events.append(placed)
 
                 fill = self.execution.simulate_fill(placed, normalized_market, seq=seq + 1)

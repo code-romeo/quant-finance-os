@@ -70,3 +70,21 @@ def test_walk_forward_rejects_non_positive_step():
         assert "step_size must be positive" in str(exc)
     else:
         raise AssertionError("Expected ValueError for non-positive step_size")
+
+
+def test_walk_forward_requires_sorted_timestamps():
+    frame = pl.DataFrame(
+        {
+            "ts": [
+                datetime(2024, 1, 1, 0, 1, tzinfo=timezone.utc),
+                datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc),
+            ],
+            "price": [101, 100],
+        }
+    )
+    try:
+        walk_forward_splits(frame, timestamp_col="ts", train_size=1, test_size=1)
+    except ValueError as exc:
+        assert "sorted" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unsorted timestamps")

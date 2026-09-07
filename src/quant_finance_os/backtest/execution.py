@@ -13,6 +13,8 @@ class ExecutionConfig:
     min_fill_quantity: float = 1e-8
 
     def __post_init__(self) -> None:
+        if self.slippage_bps < 0:
+            raise ValueError("slippage_bps must be non-negative")
         if not 0 <= self.fill_ratio <= 1:
             raise ValueError("fill_ratio must be between 0 and 1")
         if self.min_fill_quantity <= 0:

@@ -18,4 +18,12 @@ class LocalParquetStore:
 
     def query(self, sql: str) -> pl.DataFrame:
         with duckdb.connect() as conn:
-            return conn.execute(sql).pl()
+            for parquet_file in self.root.glob("*.parquet"):
+                table_name = parquet_file.stem.replace('"', '""')
+                path = str(parquet_file).replace("'", "''")
+                conn.execute(
+                    f"CREATE OR REPLACE VIEW \"{table_name}\" AS SELECT * FROM read_parquet('{path}')"
+                )
+            relation = conn.execute(sql)
+            columns = [col[0] for col in relation.description]
+            return pl.DataFrame(relation.fetchall(), schema=columns, orient="row")

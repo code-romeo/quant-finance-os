@@ -40,11 +40,13 @@ class BacktestEngine:
                 placed = order.model_copy(update={"seq": seq, "event_id": f"ord:{seq}:{idx}"})
                 events.append(placed)
 
+                seq += 1
                 fill = self.execution.simulate_fill(placed, market, seq=seq)
                 if fill is None:
                     continue
                 events.append(fill)
-                events.append(self.portfolio.apply_fill(fill))
+                seq += 1
+                events.append(self.portfolio.apply_fill(fill, seq=seq))
 
             seq += 1
             events.append(self.portfolio.mark_to_market(seq=seq, ts=market.ts, prices=prices))

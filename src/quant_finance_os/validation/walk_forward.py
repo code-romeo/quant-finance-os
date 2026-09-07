@@ -12,6 +12,8 @@ def walk_forward_splits(
 ) -> list[tuple[pl.DataFrame, pl.DataFrame]]:
     if train_size <= 0 or test_size <= 0:
         raise ValueError("train_size and test_size must be positive")
+    if step_size is not None and step_size <= 0:
+        raise ValueError("step_size must be positive")
 
     sorted_frame = frame.sort(timestamp_col)
     if sorted_frame[timestamp_col].to_list() != frame[timestamp_col].to_list():

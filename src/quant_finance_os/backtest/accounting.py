@@ -18,7 +18,7 @@ class Portfolio:
         self.realized_pnl = 0.0
         self.positions: dict[str, PositionState] = {}
 
-    def apply_fill(self, fill: FillEvent) -> PositionEvent:
+    def apply_fill(self, fill: FillEvent, seq: int | None = None) -> PositionEvent:
         qty = fill.quantity if fill.side == Side.BUY else -fill.quantity
         state = self.positions.setdefault(fill.symbol, PositionState())
 
@@ -40,17 +40,21 @@ class Portfolio:
         else:
             closed = min(abs(prev_qty), abs(qty))
             direction = 1.0 if prev_qty > 0 else -1.0
-            self.realized_pnl += direction * closed * (fill.fill_price - state.avg_price)
+            self.realized_pnl += (
+                direction * closed * (fill.fill_price - state.avg_price)
+                - fill.fee * (closed / fill.quantity)
+            )
             if new_qty == 0:
                 state.avg_price = 0.0
             elif prev_qty * new_qty < 0:
                 state.avg_price = fill.fill_price
 
         state.quantity = new_qty
+        event_seq = seq if seq is not None else fill.seq
 
         return PositionEvent(
-            event_id=f"pos:{fill.seq}:{fill.symbol}",
-            seq=fill.seq,
+            event_id=f"pos:{event_seq}:{fill.symbol}",
+            seq=event_seq,
             ts=fill.ts,
             symbol=fill.symbol,
             quantity=state.quantity,

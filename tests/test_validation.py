@@ -55,3 +55,18 @@ def test_walk_forward_splits_generates_expected_windows():
     assert splits[0][1]["price"].to_list() == [104, 105]
     assert splits[1][0]["price"].to_list() == [102, 103, 104, 105]
     assert splits[1][1]["price"].to_list() == [106, 107]
+
+
+def test_walk_forward_rejects_non_positive_step():
+    frame = pl.DataFrame(
+        {
+            "ts": [datetime(2024, 1, 1, 0, i, tzinfo=timezone.utc) for i in range(3)],
+            "price": [100, 101, 102],
+        }
+    )
+    try:
+        walk_forward_splits(frame, timestamp_col="ts", train_size=1, test_size=1, step_size=0)
+    except ValueError as exc:
+        assert "step_size must be positive" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for non-positive step_size")

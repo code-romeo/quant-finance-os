@@ -1,6 +1,6 @@
 # Architecture
 
-`quant-finance-os` uses a deterministic event model as the system boundary.
+`drift-guard-quant-os` uses a deterministic event model as the system boundary.
 
 ## Core design principles
 1. One typed event schema across research/backtest/paper/live.

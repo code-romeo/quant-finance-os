@@ -1,9 +1,9 @@
-# quant-finance-os
+# drift-guard-quant-os
 
 Deterministic research-to-production quant operating system foundation.
 
 ## Mission
-`quant-finance-os` targets the highest-value quant infra failure mode: **research-to-production drift**.  
+`drift-guard-quant-os` targets the highest-value quant infra failure mode: **research-to-production drift**.  
 The same event model drives notebook-style research, backtests, paper trading, and live-readiness checks.
 
 ## v0 Foundation (this PR)

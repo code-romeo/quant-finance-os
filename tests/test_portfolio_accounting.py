@@ -112,6 +112,38 @@ def test_partial_cover_short_keeps_cost_basis_on_remaining_position():
     assert round(portfolio.realized_pnl, 6) == 8
 
 
+def test_position_removed_after_full_close():
+    portfolio = Portfolio(initial_cash=1_000)
+    ts = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    portfolio.apply_fill(
+        FillEvent(
+            event_id="f1",
+            seq=1,
+            ts=ts,
+            order_id="o1",
+            symbol="AAPL",
+            side=Side.BUY,
+            quantity=2,
+            fill_price=10,
+            fee=0,
+        )
+    )
+    portfolio.apply_fill(
+        FillEvent(
+            event_id="f2",
+            seq=2,
+            ts=ts,
+            order_id="o2",
+            symbol="AAPL",
+            side=Side.SELL,
+            quantity=2,
+            fill_price=11,
+            fee=0,
+        )
+    )
+    assert "AAPL" not in portfolio.positions
+
+
 def test_mark_to_market_skips_missing_price_symbols():
     portfolio = Portfolio(initial_cash=1_000)
     ts = datetime(2024, 1, 1, tzinfo=timezone.utc)

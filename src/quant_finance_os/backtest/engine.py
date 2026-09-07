@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Protocol
 
 from quant_finance_os.backtest.accounting import Portfolio
@@ -53,6 +54,7 @@ class BacktestEngine:
                 events.append(self.portfolio.apply_fill(fill, seq=seq))
 
             seq += 1
-            events.append(self.portfolio.mark_to_market(seq=seq, ts=normalized_market.ts, prices=prices))
+            pnl_ts = normalized_market.ts + timedelta(microseconds=1)
+            events.append(self.portfolio.mark_to_market(seq=seq, ts=pnl_ts, prices=prices))
 
         return BacktestResult(events=events)

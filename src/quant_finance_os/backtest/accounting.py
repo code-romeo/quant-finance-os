@@ -51,6 +51,8 @@ class Portfolio:
                 state.avg_price = fill.fill_price
 
         state.quantity = new_qty
+        if new_qty == 0:
+            self.positions.pop(fill.symbol, None)
         event_seq = seq if seq is not None else fill.seq
 
         return PositionEvent(

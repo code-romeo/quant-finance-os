@@ -83,6 +83,12 @@ def test_local_parquet_store_allows_subquery_on_registered_table(tmp_path):
     assert out["p"][0] == 100.5
 
 
+def test_local_parquet_store_allows_subquery_without_table_sources(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    out = store.query("SELECT x FROM (SELECT 1 AS x) s")
+    assert out["x"][0] == 1
+
+
 def test_local_parquet_store_reports_invalid_sql_consistently(tmp_path):
     store = LocalParquetStore(tmp_path)
     try:

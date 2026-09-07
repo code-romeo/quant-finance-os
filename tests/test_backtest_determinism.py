@@ -130,3 +130,11 @@ def test_event_sequences_are_strictly_increasing():
     seqs = [event.seq for event in result.events]
     assert seqs == sorted(seqs)
     assert len(seqs) == len(set(seqs))
+
+
+def test_pnl_event_is_after_market_timestamp():
+    market_event = build_market_events()[0]
+    result = BacktestEngine(strategy=OneShotLongStrategy(), initial_cash=1_000).run([market_event])
+    pnl_events = [event for event in result.events if event.event_type.value == "pnl"]
+    assert len(pnl_events) == 1
+    assert pnl_events[0].ts > market_event.ts

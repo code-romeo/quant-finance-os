@@ -18,3 +18,10 @@ python examples/basic_strategy.py
 ```
 
 The example prints deterministic event output and final PnL snapshots.
+
+## 4) Prepare release
+```bash
+make release-check
+```
+
+See `docs/deployment.md` for tag-driven publishing.

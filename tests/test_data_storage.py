@@ -43,8 +43,10 @@ def test_local_parquet_store_refreshes_existing_table_view(tmp_path):
 
 def test_local_parquet_store_blocks_external_read_functions(tmp_path):
     store = LocalParquetStore(tmp_path)
+    external_path = tmp_path / "external.parquet"
+    pl.DataFrame({"x": [1]}).write_parquet(external_path)
     try:
-        store.query("SELECT * FROM read_parquet('/tmp/any.parquet')")
+        store.query(f"SELECT * FROM read_parquet('{external_path}')")
     except ValueError as exc:
         assert "registered local tables" in str(exc)
     else:
@@ -60,9 +62,18 @@ def test_local_parquet_store_allows_cte_over_registered_table(tmp_path):
 
 def test_local_parquet_store_blocks_commented_external_function(tmp_path):
     store = LocalParquetStore(tmp_path)
+    external_path = tmp_path / "external_2.parquet"
+    pl.DataFrame({"x": [1]}).write_parquet(external_path)
     try:
-        store.query("SELECT * FROM read_/* bypass */parquet('/tmp/any.parquet')")
+        store.query(f"SELECT * FROM read_/* bypass */parquet('{external_path}')")
     except ValueError as exc:
-        assert "registered local tables" in str(exc)
+        assert "registered local tables" in str(exc) or "Invalid SELECT query" in str(exc)
     else:
         raise AssertionError("Expected ValueError for commented external table functions")
+
+
+def test_local_parquet_store_allows_subquery_on_registered_table(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    store.write_table("bars", pl.DataFrame({"price": [100.0, 101.0]}))
+    out = store.query("SELECT avg(price) AS p FROM (SELECT price FROM bars) s")
+    assert out["p"][0] == 100.5

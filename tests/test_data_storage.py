@@ -48,3 +48,20 @@ def test_local_parquet_store_blocks_external_read_functions(tmp_path):
         assert "registered local tables" in str(exc)
     else:
         raise AssertionError("Expected ValueError for external table functions")
+
+
+def test_local_parquet_store_allows_cte_over_registered_table(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    store.write_table("bars", pl.DataFrame({"price": [101.0, 102.0]}))
+    out = store.query("WITH base AS (SELECT * FROM bars) SELECT avg(price) AS p FROM base")
+    assert out["p"][0] == 101.5
+
+
+def test_local_parquet_store_blocks_commented_external_function(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    try:
+        store.query("SELECT * FROM read_/* bypass */parquet('/tmp/any.parquet')")
+    except ValueError as exc:
+        assert "registered local tables" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for commented external table functions")

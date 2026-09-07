@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import duckdb
@@ -27,12 +28,30 @@ class LocalParquetStore:
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)
         query = statements[0].query
-        lowered = query.lower()
-        if "read_parquet(" in lowered or "read_csv(" in lowered or "read_json(" in lowered:
+        cleaned_query = _strip_sql_comments(query)
+        if re.search(r"\b(from|join)\s*\(", cleaned_query, flags=re.IGNORECASE):
             raise ValueError("Query source must be registered local tables only")
-        plan = self._conn.execute(f"EXPLAIN {query}").fetchall()[0][1].upper()
-        if "READ_PARQUET" in plan or "READ_CSV" in plan or "READ_JSON" in plan:
-            raise ValueError("Query source must be registered local tables only")
+
+        table_refs = re.findall(
+            r"\b(?:from|join)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))",
+            cleaned_query,
+            flags=re.IGNORECASE,
+        )
+        cte_refs = {
+            ref.strip('"').lower()
+            for ref in re.findall(
+                r"\b(?:with|,)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))\s+as\s*\(",
+                cleaned_query,
+                flags=re.IGNORECASE,
+            )
+        }
+        for ref in table_refs:
+            table_name = ref.strip('"')
+            if table_name.lower() in cte_refs:
+                continue
+            if table_name not in self._registered_tables:
+                raise ValueError("Query source must be registered local tables only")
+
         return self._conn.execute(query).pl()
 
     def _register_table(self, parquet_file: Path, force: bool = False) -> None:
@@ -54,3 +73,9 @@ class LocalParquetStore:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
+
+
+def _strip_sql_comments(sql: str) -> str:
+    without_block = re.sub(r"/\*.*?\*/", " ", sql, flags=re.DOTALL)
+    without_line = re.sub(r"--.*?$", " ", without_block, flags=re.MULTILINE)
+    return without_line

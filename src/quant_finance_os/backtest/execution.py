@@ -17,6 +17,8 @@ class ExecutionConfig:
             raise ValueError("slippage_bps must be non-negative")
         if not 0 <= self.fill_ratio <= 1:
             raise ValueError("fill_ratio must be between 0 and 1")
+        if self.fee_per_share < 0:
+            raise ValueError("fee_per_share must be non-negative")
         if self.min_fill_quantity <= 0:
             raise ValueError("min_fill_quantity must be positive")
 

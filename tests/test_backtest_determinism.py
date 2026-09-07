@@ -103,6 +103,11 @@ def test_execution_config_validates_slippage_bps():
         ExecutionConfig(slippage_bps=-1)
 
 
+def test_execution_config_validates_fee_per_share():
+    with pytest.raises(ValueError, match="fee_per_share"):
+        ExecutionConfig(fee_per_share=-0.01)
+
+
 def test_engine_normalizes_order_timestamp_to_market_event():
     market_event = build_market_events()[0]
     result = BacktestEngine(strategy=StaleTimestampOrderStrategy(), initial_cash=1_000).run([market_event])

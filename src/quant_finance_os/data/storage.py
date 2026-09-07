@@ -49,21 +49,22 @@ class LocalParquetStore:
             table_name = ref.strip('"')
             if table_name.lower() in cte_refs:
                 continue
-            if table_name not in self._registered_tables:
+            if table_name.lower() not in self._registered_tables:
                 raise ValueError("Query source must be registered local tables only")
 
         return self._conn.execute(query).pl()
 
     def _register_table(self, parquet_file: Path, force: bool = False) -> None:
         table_name = parquet_file.stem
-        if table_name in self._registered_tables and not force:
+        table_name_key = table_name.lower()
+        if table_name_key in self._registered_tables and not force:
             return
         quoted_table = table_name.replace('"', '""')
         quoted_path = str(parquet_file).replace("'", "''")
         self._conn.execute(
             f"CREATE OR REPLACE TABLE \"{quoted_table}\" AS SELECT * FROM read_parquet('{quoted_path}')"
         )
-        self._registered_tables.add(table_name)
+        self._registered_tables.add(table_name_key)
 
     def close(self) -> None:
         self._conn.close()

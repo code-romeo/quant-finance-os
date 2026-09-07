@@ -52,6 +52,6 @@ class BacktestEngine:
                 events.append(self.portfolio.apply_fill(fill, seq=seq))
 
             seq += 1
-            events.append(self.portfolio.mark_to_market(seq=seq, ts=market.ts, prices=prices))
+            events.append(self.portfolio.mark_to_market(seq=seq, ts=normalized_market.ts, prices=prices))
 
         return BacktestResult(events=events)

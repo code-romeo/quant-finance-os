@@ -42,13 +42,11 @@ class LocalParquetStore:
             raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
 
         has_from_or_join = re.search(r"\b(from|join)\b", normalized_query, flags=re.IGNORECASE) is not None
-        has_function_source = re.search(
-            r"\b(?:from|join)\s+(?:\"[A-Za-z_][A-Za-z0-9_]*\"|[A-Za-z_][A-Za-z0-9_]*)\s*\(",
-            normalized_query,
-            flags=re.IGNORECASE,
-        )
-        if has_from_or_join and not table_refs and has_function_source:
-            raise ValueError("Query source must be registered local tables only")
+        if has_from_or_join and not table_refs:
+            lowered = normalized_query.lower()
+            external_function_hint = re.search(r"\b(read_[a-z0-9_]+|[a-z0-9_]+_scan)\s*\(", lowered)
+            if external_function_hint:
+                raise ValueError("Query source must be registered local tables only")
         if any(table_name not in self._registered_tables for table_name in table_refs):
             raise ValueError("Query source must be registered local tables only")
 

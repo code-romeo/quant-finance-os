@@ -29,8 +29,11 @@ class BacktestEngine:
         prices: dict[str, float] = {}
         seq = 0
 
-        ordered = sorted(market_events, key=lambda e: (e.ts, e.seq, e.event_id))
-        for market in ordered:
+        for idx, market in enumerate(market_events):
+            if idx > 0:
+                prev = market_events[idx - 1]
+                if (market.ts, market.seq, market.event_id) < (prev.ts, prev.seq, prev.event_id):
+                    raise ValueError("market_events must be pre-ordered for deterministic replay")
             seq += 1
             prices[market.symbol] = market.price
             normalized_market = market.model_copy(update={"seq": seq, "event_id": f"mkt:{seq}"})

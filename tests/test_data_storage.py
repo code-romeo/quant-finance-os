@@ -89,6 +89,18 @@ def test_local_parquet_store_allows_subquery_without_table_sources(tmp_path):
     assert out["x"][0] == 1
 
 
+def test_local_parquet_store_blocks_function_inside_derived_table(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    external_path = tmp_path / "derived_external.parquet"
+    pl.DataFrame({"x": [1]}).write_parquet(external_path)
+    try:
+        store.query(f"SELECT * FROM (SELECT * FROM read_parquet('{external_path}')) t")
+    except ValueError as exc:
+        assert "registered local tables" in str(exc) or "Invalid SELECT query" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for derived external source")
+
+
 def test_local_parquet_store_reports_invalid_sql_consistently(tmp_path):
     store = LocalParquetStore(tmp_path)
     try:

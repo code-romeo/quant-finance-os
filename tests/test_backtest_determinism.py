@@ -138,3 +138,10 @@ def test_pnl_event_is_after_market_timestamp():
     pnl_events = [event for event in result.events if event.event_type.value == "pnl"]
     assert len(pnl_events) == 1
     assert pnl_events[0].ts > market_event.ts
+
+
+def test_engine_rejects_out_of_order_market_events():
+    events = build_market_events()
+    out_of_order = [events[1], events[0]]
+    with pytest.raises(ValueError, match="pre-ordered"):
+        BacktestEngine(strategy=OneShotLongStrategy(), initial_cash=1_000).run(out_of_order)

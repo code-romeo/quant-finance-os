@@ -32,18 +32,19 @@ class BacktestEngine:
         for market in ordered:
             seq += 1
             prices[market.symbol] = market.price
-            events.append(market.model_copy(update={"seq": seq, "event_id": f"mkt:{seq}"}))
+            normalized_market = market.model_copy(update={"seq": seq, "event_id": f"mkt:{seq}"})
+            events.append(normalized_market)
 
-            orders = self.strategy.on_market_data(market, self.portfolio)
+            orders = self.strategy.on_market_data(normalized_market, self.portfolio)
             for idx, order in enumerate(orders, start=1):
                 seq += 1
                 placed = order.model_copy(update={"seq": seq, "event_id": f"ord:{seq}:{idx}"})
                 events.append(placed)
 
-                seq += 1
-                fill = self.execution.simulate_fill(placed, market, seq=seq)
+                fill = self.execution.simulate_fill(placed, normalized_market, seq=seq + 1)
                 if fill is None:
                     continue
+                seq += 1
                 events.append(fill)
                 seq += 1
                 events.append(self.portfolio.apply_fill(fill, seq=seq))

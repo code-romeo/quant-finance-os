@@ -37,7 +37,7 @@ def test_portfolio_accounting_realized_unrealized_and_cash():
     pnl = portfolio.mark_to_market(seq=3, ts=ts, prices={"AAPL": 11})
 
     assert round(portfolio.cash, 6) == 946
-    assert round(portfolio.realized_pnl, 6) == 8
+    assert round(portfolio.realized_pnl, 6) == 6
     assert round(pnl.unrealized_pnl, 6) == 6
     assert round(pnl.equity, 6) == 1012
 
@@ -76,3 +76,24 @@ def test_portfolio_flip_resets_average_price():
     assert position.quantity == -3
     assert position.avg_price == 12
     assert round(portfolio.realized_pnl, 6) == 10
+
+
+def test_mark_to_market_skips_missing_price_symbols():
+    portfolio = Portfolio(initial_cash=1_000)
+    ts = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    portfolio.apply_fill(
+        FillEvent(
+            event_id="f1",
+            seq=1,
+            ts=ts,
+            order_id="o1",
+            symbol="AAPL",
+            side=Side.BUY,
+            quantity=5,
+            fill_price=10,
+            fee=0,
+        )
+    )
+    pnl = portfolio.mark_to_market(seq=2, ts=ts, prices={})
+    assert pnl.unrealized_pnl == 0
+    assert pnl.equity == portfolio.cash

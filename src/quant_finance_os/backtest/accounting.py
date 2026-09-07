@@ -22,6 +22,7 @@ class Portfolio:
     def apply_fill(self, fill: FillEvent, seq: int | None = None) -> PositionEvent:
         qty = fill.quantity if fill.side == Side.BUY else -fill.quantity
         state = self.positions.setdefault(fill.symbol, PositionState())
+        self.realized_pnl -= fill.fee
 
         prev_qty = state.quantity
         new_qty = prev_qty + qty

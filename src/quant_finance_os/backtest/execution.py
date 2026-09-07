@@ -10,10 +10,13 @@ class ExecutionConfig:
     slippage_bps: float = 1.0
     fill_ratio: float = 1.0
     fee_per_share: float = 0.0
+    min_fill_quantity: float = 1e-8
 
     def __post_init__(self) -> None:
         if not 0 <= self.fill_ratio <= 1:
             raise ValueError("fill_ratio must be between 0 and 1")
+        if self.min_fill_quantity <= 0:
+            raise ValueError("min_fill_quantity must be positive")
 
 
 class ExecutionSimulator:
@@ -22,11 +25,9 @@ class ExecutionSimulator:
 
     def simulate_fill(self, order: OrderEvent, market: MarketDataEvent, seq: int) -> FillEvent | None:
         raw_fill_qty = order.quantity * self.config.fill_ratio
-        if raw_fill_qty <= 0:
+        if raw_fill_qty < self.config.min_fill_quantity:
             return None
         fill_qty = round(raw_fill_qty, 8)
-        if fill_qty == 0:
-            fill_qty = raw_fill_qty
 
         slip = self.config.slippage_bps / 10_000
         price = market.price * (1 + slip if order.side == Side.BUY else 1 - slip)

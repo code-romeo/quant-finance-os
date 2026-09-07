@@ -21,14 +21,13 @@ class LocalParquetStore:
         return path
 
     def query(self, sql: str) -> pl.DataFrame:
-        normalized = sql.strip()
-        statements = [part.strip() for part in normalized.split(";") if part.strip()]
-        if len(statements) != 1 or not statements[0].lower().startswith("select"):
+        statements = duckdb.extract_statements(sql)
+        if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
             raise ValueError("Only read-only SELECT queries are allowed")
 
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)
-        return self._conn.execute(statements[0]).pl()
+        return self._conn.execute(statements[0].query).pl()
 
     def _register_table(self, parquet_file: Path) -> None:
         table_name = parquet_file.stem

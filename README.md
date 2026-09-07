@@ -48,5 +48,5 @@ See:
 1. Push to a PR branch and ensure the `CI` workflow passes on Python 3.12/3.13.
 2. Use the uploaded `python-dist` artifact from CI for release verification.
 3. Run `make release-check` locally before tagging.
-4. Configure `PYPI_API_TOKEN` in repository secrets.
+4. Configure PyPI trusted publishing for this repository.
 5. Tag a release only after deterministic replay/accounting tests pass unchanged (`vX.Y.Z` triggers `Release` workflow).

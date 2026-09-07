@@ -48,7 +48,10 @@ class LocalParquetStore:
         if any(table_name not in self._registered_tables for table_name in table_refs):
             raise ValueError("Query source must be registered local tables only")
 
-        return self._conn.execute(normalized_query).pl()
+        try:
+            return self._conn.execute(normalized_query).pl()
+        except duckdb.Error as exc:
+            raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
 
     def _register_table(self, parquet_file: Path, force: bool = False) -> None:
         table_name = parquet_file.stem

@@ -49,7 +49,6 @@ class BacktestEngine:
                     continue
                 seq = next_fill_seq
                 events.append(fill)
-                seq += 1
                 events.append(self.portfolio.apply_fill(fill, seq=seq))
 
             seq += 1

@@ -6,8 +6,7 @@
    ```bash
    make release-check
    ```
-3. Repository secret configured:
-   - `PYPI_API_TOKEN`
+3. PyPI trusted publishing configured for this GitHub repository (OIDC).
 
 ## Release flow
 1. Create and push a version tag:
@@ -19,7 +18,7 @@
    - verifies tests on Python 3.12/3.13
    - builds wheel and sdist
    - uploads `release-dist` artifact
-   - publishes to PyPI when `PYPI_API_TOKEN` is available
+   - publishes to PyPI via OIDC trusted publishing
 
 ## Manual dry-run build
 ```bash

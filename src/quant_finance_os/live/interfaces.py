@@ -26,6 +26,6 @@ class ShadowTrader:
     def __init__(self, execution_adapter: ExecutionAdapter) -> None:
         self._execution_adapter = execution_adapter
 
-    def mirror_order(self, order: OrderEvent, send_live: bool = False) -> ShadowDecision:
+    def mirror_order(self, order: OrderEvent, send_live: bool) -> ShadowDecision:
         ack = self._execution_adapter.submit_order(order) if send_live else None
         return ShadowDecision(backtest_order=order, live_ack_id=ack)

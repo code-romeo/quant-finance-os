@@ -68,6 +68,8 @@ class PortfolioLedger:
         self.state.cash -= fill.fee
         position.realized_pnl += realized_delta
         self.state.realized_pnl += realized_delta
+        if position.quantity == 0:
+            self.state.positions.pop(fill.symbol, None)
         return position, realized_delta
 
     def mark_to_market(self, prices: dict[str, float]) -> PortfolioState:

@@ -43,14 +43,18 @@ class LocalParquetStore:
             raise ValueError("Only SELECT queries are allowed")
         if ";" in statement:
             raise ValueError("Only a single SQL statement is allowed")
+        if " join " in lowered:
+            raise ValueError("JOIN queries are not allowed in LocalParquetStore.query")
+        if re.search(r"\b(union|intersect|except|pragma|attach|copy|call)\b", lowered):
+            raise ValueError("Unsupported SQL construct in LocalParquetStore.query")
         if re.search(r"\bread_(?:parquet|csv|json|json_auto|ndjson|text)\s*\(", lowered):
             raise ValueError("Direct file-reading functions are not allowed; query registered local tables only")
 
-        table_refs = re.findall(r'\b(?:from|join)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', lowered)
-        if not table_refs:
-            raise ValueError("Query must reference at least one registered local table")
-        unknown_refs = [ref for ref in table_refs if ref not in self._tables]
-        if unknown_refs:
+        match = re.match(r'^\s*select[\s\S]+?\sfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?(\s|$)', statement, flags=re.IGNORECASE)
+        if not match:
+            raise ValueError("Query must select from a registered local table")
+        table_name = match.group(1)
+        if table_name not in self._tables:
             raise ValueError("Query references unknown table(s); only registered local tables are allowed")
 
         con = duckdb.connect(database=":memory:")

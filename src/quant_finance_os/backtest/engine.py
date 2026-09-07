@@ -149,7 +149,7 @@ class BacktestEngine:
                 unrealized_before_fill = ledger.state.unrealized_pnl
                 position, realized_delta = ledger.apply_fill(normalized_fill)
                 marked_state = ledger.mark_to_market(prices)
-                unrealized_delta = (marked_state.unrealized_pnl - unrealized_before_fill) + realized_delta
+                unrealized_delta = marked_state.unrealized_pnl - unrealized_before_fill
 
                 position_event = normalize(
                     PositionUpdateEvent(

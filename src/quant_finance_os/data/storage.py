@@ -35,6 +35,7 @@ class LocalParquetStore:
         statement = sql.strip()
         if statement.endswith(";"):
             statement = statement[:-1].strip()
+        statement = re.sub(r"\s+", " ", statement).strip()
         lowered = statement.lower()
 
         if lowered.startswith("with "):
@@ -43,8 +44,6 @@ class LocalParquetStore:
             raise ValueError("Only SELECT queries are allowed")
         if ";" in statement:
             raise ValueError("Only a single SQL statement is allowed")
-        if " join " in lowered:
-            raise ValueError("JOIN queries are not allowed in LocalParquetStore.query")
         if re.search(r"\b(union|intersect|except|pragma|attach|copy|call)\b", lowered):
             raise ValueError("Unsupported SQL construct in LocalParquetStore.query")
         if re.search(r"\bread_(?:parquet|csv|json|json_auto|ndjson|text)\s*\(", lowered):
@@ -52,14 +51,15 @@ class LocalParquetStore:
         if re.search(r"\(\s*select\b", lowered):
             raise ValueError("Subqueries are not allowed in LocalParquetStore.query")
 
-        table_refs = re.findall(r'\bfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', statement, flags=re.IGNORECASE)
-        if len(table_refs) != 1:
-            raise ValueError("Query must reference exactly one registered local table")
-        match = re.match(r'^\s*select[\s\S]+?\sfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?(\s|$)', statement, flags=re.IGNORECASE)
+        match = re.fullmatch(
+            r'select\s+.+\s+from\s+"?([A-Za-z_][A-Za-z0-9_]*)"?(?:\s+where\s+.+)?(?:\s+order\s+by\s+.+)?(?:\s+limit\s+\d+)?',
+            statement,
+            flags=re.IGNORECASE,
+        )
         if not match:
-            raise ValueError("Query must select from a registered local table")
+            raise ValueError("Only single-table SELECT queries are supported")
         table_name = match.group(1)
-        if table_name not in self._tables or any(ref not in self._tables for ref in table_refs):
+        if table_name not in self._tables:
             raise ValueError("Query references unknown table(s); only registered local tables are allowed")
 
         con = duckdb.connect(database=":memory:")

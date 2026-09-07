@@ -78,3 +78,61 @@ def test_short_add_updates_weighted_average_price():
     ledger.apply_fill(first)
     position, _ = ledger.apply_fill(second)
     assert round(position.average_price, 6) == 103.333333
+
+
+def test_reversal_long_to_short_resets_average_to_reversal_fill():
+    ledger = PortfolioLedger(initial_cash=10_000)
+    ledger.apply_fill(
+        FillEvent(
+            timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc),
+            order_id="o1",
+            symbol="AAPL",
+            side=Side.BUY,
+            quantity=5,
+            fill_price=100,
+            fee=0,
+        )
+    )
+    position, realized = ledger.apply_fill(
+        FillEvent(
+            timestamp=datetime(2024, 1, 1, 9, 31, tzinfo=timezone.utc),
+            order_id="o2",
+            symbol="AAPL",
+            side=Side.SELL,
+            quantity=8,
+            fill_price=110,
+            fee=0,
+        )
+    )
+    assert realized == 50
+    assert position.quantity == -3
+    assert position.average_price == 110
+
+
+def test_reversal_short_to_long_resets_average_to_reversal_fill():
+    ledger = PortfolioLedger(initial_cash=10_000)
+    ledger.apply_fill(
+        FillEvent(
+            timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc),
+            order_id="o1",
+            symbol="AAPL",
+            side=Side.SELL,
+            quantity=5,
+            fill_price=100,
+            fee=0,
+        )
+    )
+    position, realized = ledger.apply_fill(
+        FillEvent(
+            timestamp=datetime(2024, 1, 1, 9, 31, tzinfo=timezone.utc),
+            order_id="o2",
+            symbol="AAPL",
+            side=Side.BUY,
+            quantity=8,
+            fill_price=90,
+            fee=0,
+        )
+    )
+    assert realized == 50
+    assert position.quantity == 3
+    assert position.average_price == 90

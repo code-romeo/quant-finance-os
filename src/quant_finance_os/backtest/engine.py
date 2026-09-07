@@ -92,6 +92,7 @@ class BacktestEngine:
         self._run_id = run_id
 
     def run(self, market_events: Iterable[MarketEvent]) -> BacktestResult:
+        """Run a deterministic replay over a globally time-ordered market event stream."""
         ledger = PortfolioLedger(initial_cash=self._initial_cash)
         seq = 0
 

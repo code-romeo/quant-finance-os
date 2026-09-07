@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import duckdb
 import polars as pl
@@ -27,13 +28,29 @@ class LocalParquetStore:
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)
         query = statements[0].query
-        try:
-            plan = self._conn.execute(f"EXPLAIN {query}").fetchall()[0][1].upper()
-        except duckdb.Error as exc:  # pragma: no cover - defensive fallback
-            raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
 
-        if any(token in plan for token in ("READ_PARQUET", "READ_CSV", "READ_JSON", "READ_TEXT")):
+        if re.search(r"\b(?:from|join)\s+[A-Za-z_][A-Za-z0-9_]*\s*\(", query, flags=re.IGNORECASE):
             raise ValueError("Query source must be registered local tables only")
+
+        table_refs = re.findall(
+            r"\b(?:from|join)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))",
+            query,
+            flags=re.IGNORECASE,
+        )
+        cte_refs = {
+            ref.strip('"').lower()
+            for ref in re.findall(
+                r"\b(?:with|,)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))\s+as\s*\(",
+                query,
+                flags=re.IGNORECASE,
+            )
+        }
+        for ref in table_refs:
+            table_name = ref.strip('"').lower()
+            if table_name in cte_refs:
+                continue
+            if table_name not in self._registered_tables:
+                raise ValueError("Query source must be registered local tables only")
 
         return self._conn.execute(query).pl()
 
@@ -45,7 +62,7 @@ class LocalParquetStore:
         quoted_table = table_name.replace('"', '""')
         quoted_path = str(parquet_file).replace("'", "''")
         self._conn.execute(
-            f"CREATE OR REPLACE TABLE \"{quoted_table}\" AS SELECT * FROM read_parquet('{quoted_path}')"
+            f"CREATE OR REPLACE VIEW \"{quoted_table}\" AS SELECT * FROM read_parquet('{quoted_path}')"
         )
         self._registered_tables.add(table_name_key)
 

@@ -130,10 +130,10 @@ def test_mark_to_market_skips_missing_price_symbols():
     )
     pnl = portfolio.mark_to_market(seq=2, ts=ts, prices={})
     assert pnl.unrealized_pnl == 0
-    assert pnl.equity == portfolio.cash
+    assert pnl.equity == portfolio.cash + 50
 
 
-def test_mark_to_market_missing_price_for_short_skips_revaluation():
+def test_mark_to_market_missing_price_for_short_uses_cost_basis():
     portfolio = Portfolio(initial_cash=1_000)
     ts = datetime(2024, 1, 1, tzinfo=timezone.utc)
     portfolio.apply_fill(
@@ -151,4 +151,4 @@ def test_mark_to_market_missing_price_for_short_skips_revaluation():
     )
     pnl = portfolio.mark_to_market(seq=2, ts=ts, prices={})
     assert pnl.unrealized_pnl == 0
-    assert pnl.equity == portfolio.cash
+    assert pnl.equity == portfolio.cash - 50

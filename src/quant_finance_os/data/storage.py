@@ -13,6 +13,7 @@ class LocalParquetStore:
         self.root.mkdir(parents=True, exist_ok=True)
         self._conn = duckdb.connect()
         self._registered_tables: set[str] = set()
+        self.refresh()
 
     def write_table(self, name: str, frame: pl.DataFrame) -> Path:
         path = self.root / f"{name}.parquet"
@@ -28,8 +29,6 @@ class LocalParquetStore:
         if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
             raise ValueError("Only read-only SELECT queries are allowed")
 
-        for parquet_file in self.root.glob("*.parquet"):
-            self._register_table(parquet_file)
         normalized_query = statements[0].query
         if normalized_query.lstrip().lower().startswith("with"):
             raise ValueError("CTE queries are not supported; query registered tables directly")
@@ -64,6 +63,10 @@ class LocalParquetStore:
             f"CREATE OR REPLACE VIEW \"{quoted_table}\" AS SELECT * FROM read_parquet('{quoted_path}')"
         )
         self._registered_tables.add(table_name_key)
+
+    def refresh(self) -> None:
+        for parquet_file in self.root.glob("*.parquet"):
+            self._register_table(parquet_file)
 
     def close(self) -> None:
         self._conn.close()

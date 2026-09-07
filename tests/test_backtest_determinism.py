@@ -116,10 +116,17 @@ def test_engine_normalizes_order_timestamp_to_market_event():
     assert order_events[0].ts == market_event.ts
 
 
-def test_fill_and_position_share_execution_sequence():
+def test_fill_and_position_have_distinct_sequences():
     result = BacktestEngine(strategy=OneShotLongStrategy(), initial_cash=1_000).run(build_market_events())
     fill_events = [event for event in result.events if event.event_type.value == "fill"]
     position_events = [event for event in result.events if event.event_type.value == "position"]
     assert len(fill_events) == 1
     assert len(position_events) == 1
-    assert fill_events[0].seq == position_events[0].seq
+    assert fill_events[0].seq + 1 == position_events[0].seq
+
+
+def test_event_sequences_are_strictly_increasing():
+    result = BacktestEngine(strategy=OneShotLongStrategy(), initial_cash=1_000).run(build_market_events())
+    seqs = [event.seq for event in result.events]
+    assert seqs == sorted(seqs)
+    assert len(seqs) == len(set(seqs))

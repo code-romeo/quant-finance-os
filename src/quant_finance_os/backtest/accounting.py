@@ -70,7 +70,7 @@ class Portfolio:
         for symbol, state in self.positions.items():
             price = prices.get(symbol)
             if price is None:
-                continue
+                price = state.avg_price
             market_value += state.quantity * price
             unrealized += state.quantity * (price - state.avg_price)
 

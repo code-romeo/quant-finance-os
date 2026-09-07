@@ -121,9 +121,7 @@ class BacktestEngine:
             output_events.append(market_event)
             prices[market_event.symbol] = market_event.price
 
-            unrealized_before_market = ledger.state.unrealized_pnl
-            market_marked_state = ledger.mark_to_market(prices)
-            market_repricing_delta = market_marked_state.unrealized_pnl - unrealized_before_market
+            ledger.mark_to_market(prices)
 
             signals = tuple(self._strategy.on_market_event(market_event, ledger))
             for signal in signals:
@@ -148,8 +146,10 @@ class BacktestEngine:
                 normalized_fill = normalize(fill, parent_event_id=normalized_order.metadata.event_id)
                 output_events.append(normalized_fill)
 
+                unrealized_before_fill = ledger.state.unrealized_pnl
                 position, realized_delta = ledger.apply_fill(normalized_fill)
                 marked_state = ledger.mark_to_market(prices)
+                unrealized_delta = marked_state.unrealized_pnl - unrealized_before_fill
 
                 position_event = normalize(
                     PositionUpdateEvent(
@@ -167,7 +167,7 @@ class BacktestEngine:
                         timestamp=market_event.timestamp,
                         symbol=position.symbol,
                         realized_delta=realized_delta,
-                        unrealized_delta=market_repricing_delta,
+                        unrealized_delta=unrealized_delta,
                         total_realized=marked_state.realized_pnl,
                         total_unrealized=marked_state.unrealized_pnl,
                         cash=marked_state.cash,

@@ -30,8 +30,11 @@ def test_local_parquet_store_query_guardrails(tmp_path: Path):
     with pytest.raises(ValueError, match="Direct file-reading functions"):
         store.query("SELECT * FROM read_parquet('other.parquet')")
 
-    with pytest.raises(ValueError, match="exactly one"):
+    with pytest.raises(ValueError, match="Subqueries are not allowed"):
         store.query("SELECT symbol FROM bars WHERE symbol IN (SELECT symbol FROM bars)")
+
+    with pytest.raises(ValueError, match="Subqueries are not allowed"):
+        store.query("SELECT * FROM bars WHERE EXISTS (SELECT 1)")
 
     with pytest.raises(ValueError, match="CTE"):
         store.query("WITH cte AS (SELECT * FROM bars) SELECT * FROM cte")

@@ -49,6 +49,8 @@ class LocalParquetStore:
             raise ValueError("Unsupported SQL construct in LocalParquetStore.query")
         if re.search(r"\bread_(?:parquet|csv|json|json_auto|ndjson|text)\s*\(", lowered):
             raise ValueError("Direct file-reading functions are not allowed; query registered local tables only")
+        if re.search(r"\(\s*select\b", lowered):
+            raise ValueError("Subqueries are not allowed in LocalParquetStore.query")
 
         table_refs = re.findall(r'\bfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', statement, flags=re.IGNORECASE)
         if len(table_refs) != 1:

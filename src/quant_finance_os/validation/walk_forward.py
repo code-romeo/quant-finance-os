@@ -16,7 +16,7 @@ def walk_forward_splits(
         raise ValueError("step_size must be positive")
 
     if not frame[timestamp_col].is_sorted():
-        raise ValueError("frame must be sorted by timestamp_col")
+        raise ValueError(f"frame must be sorted by {timestamp_col}")
 
     step = step_size or test_size
     splits: list[tuple[pl.DataFrame, pl.DataFrame]] = []

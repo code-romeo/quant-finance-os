@@ -81,3 +81,13 @@ def test_local_parquet_store_allows_subquery_on_registered_table(tmp_path):
     store.write_table("bars", pl.DataFrame({"price": [100.0, 101.0]}))
     out = store.query("SELECT avg(price) AS p FROM (SELECT price FROM bars) s")
     assert out["p"][0] == 100.5
+
+
+def test_local_parquet_store_reports_invalid_sql_consistently(tmp_path):
+    store = LocalParquetStore(tmp_path)
+    try:
+        store.query("SELECT FROM")
+    except ValueError as exc:
+        assert "Invalid SELECT query for LocalParquetStore" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for invalid SQL")

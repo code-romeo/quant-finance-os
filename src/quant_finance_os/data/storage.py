@@ -21,28 +21,34 @@ class LocalParquetStore:
         return path
 
     def query(self, sql: str) -> pl.DataFrame:
-        statements = duckdb.extract_statements(sql)
+        try:
+            statements = duckdb.extract_statements(sql)
+        except duckdb.Error as exc:
+            raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
         if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
             raise ValueError("Only read-only SELECT queries are allowed")
 
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)
-        query = statements[0].query
-        if query.lstrip().lower().startswith("with"):
+        normalized_query = statements[0].query
+        if normalized_query.lstrip().lower().startswith("with"):
             raise ValueError("CTE queries are not supported; query registered tables directly")
 
         try:
-            table_refs = {name.split(".")[-1].strip('"').lower() for name in duckdb.get_table_names(query)}
+            table_refs = {
+                name.split(".")[-1].strip('"').lower()
+                for name in duckdb.get_table_names(normalized_query)
+            }
         except duckdb.Error as exc:
             raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
 
-        has_from_or_join = re.search(r"\b(from|join)\b", query, flags=re.IGNORECASE) is not None
+        has_from_or_join = re.search(r"\b(from|join)\b", normalized_query, flags=re.IGNORECASE) is not None
         if has_from_or_join and not table_refs:
             raise ValueError("Query source must be registered local tables only")
         if any(table_name not in self._registered_tables for table_name in table_refs):
             raise ValueError("Query source must be registered local tables only")
 
-        return self._conn.execute(query).pl()
+        return self._conn.execute(normalized_query).pl()
 
     def _register_table(self, parquet_file: Path, force: bool = False) -> None:
         table_name = parquet_file.stem

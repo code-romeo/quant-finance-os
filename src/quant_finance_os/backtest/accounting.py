@@ -39,6 +39,8 @@ class Portfolio:
                 if total_abs
                 else 0.0
             )
+            if new_qty == 0:
+                state.avg_price = 0.0
         else:
             closed = min(abs(prev_qty), abs(qty))
             direction = 1.0 if prev_qty > 0 else -1.0
@@ -68,7 +70,7 @@ class Portfolio:
         for symbol, state in self.positions.items():
             price = prices.get(symbol)
             if price is None:
-                price = state.avg_price
+                continue
             market_value += state.quantity * price
             unrealized += state.quantity * (price - state.avg_price)
 

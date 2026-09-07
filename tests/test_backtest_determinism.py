@@ -1,0 +1,125 @@
+from datetime import datetime, timezone
+
+import pytest
+
+from quant_finance_os.backtest.engine import BacktestEngine, ConstantBpsSlippage, ImmediateFillModel
+from quant_finance_os.core.events import MarketEvent, PnLEvent, Side, SignalEvent
+
+
+class BuyOnceStrategy:
+    def __init__(self) -> None:
+        self._has_bought = False
+
+    def on_market_event(self, event: MarketEvent, ledger):
+        if self._has_bought:
+            return []
+        self._has_bought = True
+        return [SignalEvent(timestamp=event.timestamp, symbol=event.symbol, side=Side.BUY, quantity=1.0, reason="entry")]
+
+
+class MetadataAwareStrategy:
+    def __init__(self) -> None:
+        self.seen_seq: list[int] = []
+
+    def on_market_event(self, event: MarketEvent, ledger):
+        self.seen_seq.append(event.metadata.seq)
+        return []
+
+
+class SellOnceStrategy:
+    def __init__(self) -> None:
+        self._has_sold = False
+
+    def on_market_event(self, event: MarketEvent, ledger):
+        if self._has_sold:
+            return []
+        self._has_sold = True
+        return [SignalEvent(timestamp=event.timestamp, symbol=event.symbol, side=Side.SELL, quantity=1.0, reason="entry")]
+
+
+def _events():
+    return [
+        MarketEvent(timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc), symbol="AAPL", price=100.0, volume=10.0),
+        MarketEvent(timestamp=datetime(2024, 1, 1, 9, 31, tzinfo=timezone.utc), symbol="AAPL", price=101.0, volume=15.0),
+    ]
+
+
+def test_backtest_replay_is_deterministic():
+    left = BacktestEngine(strategy=BuyOnceStrategy(), initial_cash=10_000, run_id="r1").run(_events())
+    right = BacktestEngine(strategy=BuyOnceStrategy(), initial_cash=10_000, run_id="r1").run(_events())
+
+    assert left.events == right.events
+    assert [e.metadata.seq for e in left.events] == list(range(1, len(left.events) + 1))
+
+
+def test_backtest_metadata_contains_run_id():
+    result = BacktestEngine(strategy=BuyOnceStrategy(), initial_cash=10_000, run_id="run-abc").run(_events())
+    assert all(event.metadata.run_id == "run-abc" for event in result.events)
+
+
+def test_same_engine_run_restarts_sequence_and_portfolio():
+    class BuyEveryTickStrategy:
+        def on_market_event(self, event: MarketEvent, ledger):
+            return [SignalEvent(timestamp=event.timestamp, symbol=event.symbol, side=Side.BUY, quantity=1.0, reason="entry")]
+
+    engine = BacktestEngine(strategy=BuyEveryTickStrategy(), initial_cash=10_000, run_id="r1")
+    first = engine.run(_events())
+    second = engine.run(_events())
+
+    assert first.events == second.events
+    assert first.final_cash == second.final_cash
+    assert first.final_equity == second.final_equity
+
+
+def test_strategy_receives_normalized_market_event_metadata():
+    strategy = MetadataAwareStrategy()
+    BacktestEngine(strategy=strategy, initial_cash=10_000, run_id="r1").run(_events())
+    assert strategy.seen_seq == [1, 2]
+
+
+def test_backtest_applies_slippage_and_fees():
+    engine = BacktestEngine(
+        strategy=BuyOnceStrategy(),
+        initial_cash=10_000,
+        slippage_model=ConstantBpsSlippage(bps=10),
+        fill_model=ImmediateFillModel(fee_bps=5),
+        run_id="r1",
+    )
+    result = engine.run(_events())
+
+    pnl_events = [event for event in result.events if isinstance(event, PnLEvent)]
+    assert pnl_events, "expected at least one pnl event"
+    first_pnl = pnl_events[0]
+    assert round(first_pnl.cash, 6) == 9899.84995
+    assert round(first_pnl.equity, 6) == 9999.84995
+
+
+def test_backtest_applies_sell_side_slippage_direction():
+    engine = BacktestEngine(
+        strategy=SellOnceStrategy(),
+        initial_cash=10_000,
+        slippage_model=ConstantBpsSlippage(bps=10),
+        fill_model=ImmediateFillModel(fee_bps=0),
+        run_id="r1",
+    )
+    result = engine.run(_events())
+    pnl_events = [event for event in result.events if isinstance(event, PnLEvent)]
+    assert pnl_events
+    first_pnl = pnl_events[0]
+    assert round(first_pnl.cash, 6) == 10099.9
+
+
+def test_backtest_rejects_out_of_order_market_events():
+    events = [
+        MarketEvent(timestamp=datetime(2024, 1, 1, 9, 31, tzinfo=timezone.utc), symbol="AAPL", price=101.0, volume=15.0),
+        MarketEvent(timestamp=datetime(2024, 1, 1, 9, 30, tzinfo=timezone.utc), symbol="AAPL", price=100.0, volume=10.0),
+    ]
+    engine = BacktestEngine(strategy=BuyOnceStrategy(), initial_cash=10_000)
+
+    with pytest.raises(ValueError, match="ordered"):
+        engine.run(events)
+
+
+def test_market_event_validation_fails_fast():
+    with pytest.raises(ValueError, match="positive"):
+        MarketEvent(timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc), symbol="AAPL", price=0.0, volume=1.0)

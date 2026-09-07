@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 import duckdb
 import polars as pl
@@ -28,14 +28,14 @@ class LocalParquetStore:
         for parquet_file in self.root.glob("*.parquet"):
             self._register_table(parquet_file)
         query = statements[0].query
+        if query.lstrip().lower().startswith("with"):
+            raise ValueError("CTE queries are not supported; query registered tables directly")
 
         try:
             table_refs = {name.split(".")[-1].strip('"').lower() for name in duckdb.get_table_names(query)}
         except duckdb.Error as exc:
             raise ValueError("Invalid SELECT query for LocalParquetStore") from exc
 
-        cte_refs = _extract_leading_cte_names(query)
-        table_refs = {table_name for table_name in table_refs if table_name not in cte_refs}
         has_from_or_join = re.search(r"\b(from|join)\b", query, flags=re.IGNORECASE) is not None
         if has_from_or_join and not table_refs:
             raise ValueError("Query source must be registered local tables only")
@@ -64,30 +64,3 @@ class LocalParquetStore:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
-
-
-def _extract_leading_cte_names(query: str) -> set[str]:
-    stripped = query.lstrip()
-    if not stripped.lower().startswith("with"):
-        return set()
-
-    depth = 0
-    main_select_idx = None
-    for idx, char in enumerate(stripped):
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth = max(0, depth - 1)
-        elif depth == 0 and stripped[idx : idx + 6].lower() == "select":
-            main_select_idx = idx
-            break
-
-    with_clause = stripped[:main_select_idx] if main_select_idx is not None else stripped
-    return {
-        ref.strip('"').lower()
-        for ref in re.findall(
-            r"(?:\bwith|,)\s+((?:\"[^\"]+\")|(?:[A-Za-z_][A-Za-z0-9_]*))\s+as\s*\(",
-            with_clause,
-            flags=re.IGNORECASE,
-        )
-    }

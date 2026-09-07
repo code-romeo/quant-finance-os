@@ -43,9 +43,13 @@ class LocalParquetStore:
             raise ValueError("Only SELECT queries are allowed")
         if ";" in statement:
             raise ValueError("Only a single SQL statement is allowed")
-        forbidden = ("insert", "update", "delete", "drop", "alter", "create", "attach", "copy", "pragma")
-        if any(token in lowered for token in forbidden):
-            raise ValueError("Unsafe query pattern detected")
+
+        table_refs = re.findall(r'\b(?:from|join)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?', lowered)
+        if not table_refs:
+            raise ValueError("Query must reference at least one registered local table")
+        unknown_refs = [ref for ref in table_refs if ref not in self._tables]
+        if unknown_refs:
+            raise ValueError("Query references unknown table(s); only registered local tables are allowed")
 
         con = duckdb.connect(database=":memory:")
         try:
@@ -54,11 +58,7 @@ class LocalParquetStore:
                 safe_identifier = table_name.replace('"', '""')
                 con.execute(f'CREATE VIEW "{safe_identifier}" AS SELECT * FROM read_parquet(\'{safe_path}\')')
 
-            try:
-                result = con.execute(statement)
-            except duckdb.CatalogException as exc:
-                raise ValueError("Query references unknown table(s); only registered local tables are allowed") from exc
-
+            result = con.execute(statement)
             rows = result.fetchall()
             cols = [d[0] for d in result.description]
             return [dict(zip(cols, row)) for row in rows]

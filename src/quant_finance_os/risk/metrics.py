@@ -24,6 +24,8 @@ def calculate_exposure(positions: dict[str, float], prices: dict[str, float]) ->
 def max_drawdown(equity_curve: list[float]) -> float:
     if len(equity_curve) < 2:
         raise ValueError("equity_curve must contain at least two points")
+    if any(point <= 0 for point in equity_curve):
+        raise ValueError("equity_curve values must be strictly positive for drawdown calculation")
 
     peak = equity_curve[0]
     max_dd = 0.0

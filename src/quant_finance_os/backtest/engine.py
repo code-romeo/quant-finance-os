@@ -146,10 +146,8 @@ class BacktestEngine:
                 normalized_fill = self._normalize(fill, parent_event_id=normalized_order.metadata.event_id)
                 output_events.append(normalized_fill)
 
-                unrealized_before_fill = self._ledger.state.unrealized_pnl
                 position, realized_delta = self._ledger.apply_fill(normalized_fill)
                 marked_state = self._ledger.mark_to_market(prices)
-                unrealized_delta = marked_state.unrealized_pnl - unrealized_before_fill
 
                 position_event = self._normalize(
                     PositionUpdateEvent(
@@ -167,7 +165,7 @@ class BacktestEngine:
                         timestamp=market_event.timestamp,
                         symbol=position.symbol,
                         realized_delta=realized_delta,
-                        unrealized_delta=unrealized_delta,
+                        unrealized_delta=0.0,
                         total_realized=marked_state.realized_pnl,
                         total_unrealized=marked_state.unrealized_pnl,
                         cash=marked_state.cash,

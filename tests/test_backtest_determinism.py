@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from quant_finance_os.backtest.engine import BacktestEngine
-from quant_finance_os.core.events import MarketEvent, Side, SignalEvent
+from quant_finance_os.backtest.engine import BacktestEngine, ConstantBpsSlippage, ImmediateFillModel
+from quant_finance_os.core.events import MarketEvent, PnLEvent, Side, SignalEvent
 
 
 class BuyOnceStrategy:
@@ -59,6 +59,23 @@ def test_strategy_receives_normalized_market_event_metadata():
     strategy = MetadataAwareStrategy()
     BacktestEngine(strategy=strategy, initial_cash=10_000, run_id="r1").run(_events())
     assert strategy.seen_seq == [1, 2]
+
+
+def test_backtest_applies_slippage_and_fees():
+    engine = BacktestEngine(
+        strategy=BuyOnceStrategy(),
+        initial_cash=10_000,
+        slippage_model=ConstantBpsSlippage(bps=10),
+        fill_model=ImmediateFillModel(fee_bps=5),
+        run_id="r1",
+    )
+    result = engine.run(_events())
+
+    pnl_events = [event for event in result.events if isinstance(event, PnLEvent)]
+    assert pnl_events, "expected at least one pnl event"
+    first_pnl = pnl_events[0]
+    assert round(first_pnl.cash, 6) == 9899.84995
+    assert round(first_pnl.equity, 6) == 9999.84995
 
 
 def test_backtest_rejects_out_of_order_market_events():

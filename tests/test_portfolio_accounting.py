@@ -37,7 +37,7 @@ def test_portfolio_accounting_realized_unrealized_and_cash():
     pnl = portfolio.mark_to_market(seq=3, ts=ts, prices={"AAPL": 11})
 
     assert round(portfolio.cash, 6) == 946
-    assert round(portfolio.realized_pnl, 6) == 7
+    assert round(portfolio.realized_pnl, 6) == 8
     assert round(pnl.unrealized_pnl, 6) == 6
     assert round(pnl.equity, 6) == 1012
 

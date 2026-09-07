@@ -17,6 +17,10 @@ class LocalParquetStore:
         return path
 
     def query(self, sql: str) -> pl.DataFrame:
+        stripped = sql.lstrip().lower()
+        if not (stripped.startswith("select") or stripped.startswith("with")):
+            raise ValueError("Only read-only SELECT queries are allowed")
+
         with duckdb.connect() as conn:
             for parquet_file in self.root.glob("*.parquet"):
                 table_name = parquet_file.stem.replace('"', '""')
@@ -24,6 +28,4 @@ class LocalParquetStore:
                 conn.execute(
                     f"CREATE OR REPLACE VIEW \"{table_name}\" AS SELECT * FROM read_parquet('{path}')"
                 )
-            relation = conn.execute(sql)
-            columns = [col[0] for col in relation.description]
-            return pl.DataFrame(relation.fetchall(), schema=columns, orient="row")
+            return conn.execute(sql).pl()

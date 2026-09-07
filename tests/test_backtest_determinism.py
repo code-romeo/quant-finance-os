@@ -56,3 +56,16 @@ def test_backtest_replay_is_deterministic():
     ).run(build_market_events())
 
     assert [e.model_dump() for e in result_1.events] == [e.model_dump() for e in result_2.events]
+
+
+def test_no_fill_path_emits_no_fill_events():
+    config = ExecutionConfig(slippage_bps=0, fill_ratio=0.0, fee_per_share=0.0)
+    result = BacktestEngine(
+        strategy=OneShotLongStrategy(),
+        initial_cash=1_000,
+        execution=ExecutionSimulator(config),
+    ).run(build_market_events())
+
+    event_types = [event.event_type.value for event in result.events]
+    assert "order" in event_types
+    assert "fill" not in event_types

@@ -15,8 +15,8 @@ def walk_forward_splits(
     if step_size is not None and step_size <= 0:
         raise ValueError("step_size must be positive")
 
-    sorted_frame = frame.sort(timestamp_col)
-    if sorted_frame[timestamp_col].to_list() != frame[timestamp_col].to_list():
+    timestamps = frame[timestamp_col].to_list()
+    if any(timestamps[i] > timestamps[i + 1] for i in range(len(timestamps) - 1)):
         raise ValueError("frame must be sorted by timestamp_col")
 
     step = step_size or test_size

@@ -40,10 +40,7 @@ class Portfolio:
         else:
             closed = min(abs(prev_qty), abs(qty))
             direction = 1.0 if prev_qty > 0 else -1.0
-            self.realized_pnl += (
-                direction * closed * (fill.fill_price - state.avg_price)
-                - fill.fee * (closed / fill.quantity)
-            )
+            self.realized_pnl += direction * closed * (fill.fill_price - state.avg_price)
             if new_qty == 0:
                 state.avg_price = 0.0
             elif prev_qty * new_qty < 0:
